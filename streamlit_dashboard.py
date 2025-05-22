@@ -949,7 +949,6 @@ with tab5:
         else:
             st.warning("⚠️ No division data available.")
 
-# Tab 6: Sales Trend Analysis
 with tab6:
     # --- Tooltip Header ---
     tooltip_header(
@@ -990,7 +989,7 @@ with tab6:
                 )
 
             with col2:
-                show_data_table = st.toggle("Show Data Table", value=True,key="Key5")
+                show_data_table = st.toggle("Show Data Table", value=True, key="Key5")
 
         # --- Prepare Data ---
         df_filtered_new["date"] = pd.to_datetime(df_filtered_new["date"])
@@ -1012,50 +1011,57 @@ with tab6:
         trend_df = trend_df.reset_index(drop=True)
         trend_df = trend_df.loc[:, ~trend_df.columns.str.startswith('Unnamed')]
         trend_df1 = trend_df.rename(columns={'period': 'Time Period','total_sale':'Total Sold Units'})
+
         # --- Optional Data Table ---
         if show_data_table:
-            with st.expander("📋 Sales Trend Data Table",expanded=True):
-                st.dataframe(trend_df1, use_container_width=True,hide_index=True)
+            with st.expander("📋 Sales Trend Data Table", expanded=True):
+                styled_table = trend_df1.style.set_properties(**{
+                    'text-align': 'center'
+                }).set_table_styles([
+                    {"selector": "th", "props": [("text-align", "center")]}
+                ])
+
+                st.markdown(
+                    """
+                    <style>
+                    .dataframe th, .dataframe td {
+                        text-align: center !important;
+                        vertical-align: middle !important;
+                        font-family: Arial, sans-serif;
+                        font-size: 14px;
+                    }
+                    </style>
+                    """,
+                    unsafe_allow_html=True
+                )
+
+                # ✅ Use styled_table instead of trend_df1
+                st.dataframe(styled_table, use_container_width=True, hide_index=True)
 
         # --- Generate tooltip labels based on period range ---
         if date_grouping == "Day":
             trend_df["label"] = trend_df["period"].dt.strftime("%d %b %Y")
-            chart_type = "line"
         elif date_grouping == "Week":
             trend_df["end_period"] = trend_df["period"] + pd.Timedelta(days=6)
             trend_df["label"] = trend_df["period"].dt.strftime("%d %b") + " - " + trend_df["end_period"].dt.strftime("%d %b")
-            chart_type = "bar"  # Use bar chart for week
         elif date_grouping == "Month":
             trend_df["end_period"] = trend_df["period"] + pd.offsets.MonthEnd(0)
             trend_df["label"] = trend_df["period"].dt.strftime("%b %Y")
-            chart_type = "bar"  # Use bar chart for month
 
-        # --- Chart: Sales Over Time ---
+        # --- Chart: Sales Over Time (Line Chart for All) ---
         st.markdown("#### 📊 Sales Over Time")
 
-        if chart_type == "line":
-            fig = px.line(
-                trend_df,
-                x="period",
-                y="total_sale",
-                markers=True,
-                line_shape="spline",
-                title="Sales Trend",
-                labels={"period": "Date", "total_sale": "Total Sales"},
-                hover_data={"label": True, "total_sale": True}
-            )
-            fig.update_traces(line=dict(color="royalblue", width=3))
-        else:
-            fig = px.bar(
-                trend_df,
-                x="period",
-                y="total_sale",
-                title="Sales Trend",
-                text_auto=True,
-                labels={"period": "Date", "total_sale": "Total Sales"},
-                hover_data={"label": True, "total_sale": True}
-            )
-            fig.update_traces(marker_color="royalblue", marker_line_width=0)
+        fig = px.line(
+            trend_df,
+            x="period",
+            y="total_sale",
+            markers=True,
+            line_shape="spline",
+            title="Sales Trend",
+            labels={"period": "Date", "total_sale": "Total Sales"},
+            hover_data={"label": True, "total_sale": True}
+        )
+        fig.update_traces(line=dict(color="royalblue", width=3))
 
         fig.update_layout(
             xaxis_title=None,
@@ -1068,6 +1074,7 @@ with tab6:
 
         st.plotly_chart(fig, use_container_width=True)
 
+        # --- CSV Download ---
         csv = trend_df.to_csv(index=False).encode("utf-8")
         st.download_button(
             label="⬇️ Download Trend Data as CSV",
